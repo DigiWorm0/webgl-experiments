@@ -115,7 +115,7 @@ export default class FlappyBird {
             },
             ...this.pipeHeights.map((height, index) => {
                 return {
-                    position: [this.pipeOffset + index * PIPE_SPACING, height + PIPE_WIDTH - 200, 0],
+                    position: [this.pipeOffset + index * PIPE_SPACING, height + PIPE_WIDTH - 200, -10],
                     rotation: [0, 0, Math.PI],
                     scale: [1, 1, 1],
 

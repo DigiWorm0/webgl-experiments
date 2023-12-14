@@ -70,8 +70,14 @@ function main() {
     const game = new FlappyBird();
 
     // Draw the scene.
+    let lastFrameTime = performance.now();
+    let averageFPS = 0;
     const drawScene = () => {
         resizeCanvasToDisplaySize(canvas);
+        const fps = 1 / ((performance.now() - lastFrameTime) / 1000);
+        lastFrameTime = performance.now();
+        averageFPS = (averageFPS + fps) / 2;
+        console.log("FPS:" + fps.toFixed(2), "AVG:" + averageFPS.toFixed(2));
 
         // Tell WebGL how to convert from clip space to pixels
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);

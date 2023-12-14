@@ -1,3 +1,6 @@
+//precision highp float; // <-- Uncomment to test
+precision lowp float;
+
 uniform mat4 u_worldViewProjection;
 uniform vec3 u_lightWorldPos;
 uniform mat4 u_world;

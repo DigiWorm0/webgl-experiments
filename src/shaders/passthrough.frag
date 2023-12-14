@@ -1,4 +1,5 @@
-precision mediump float;
+//precision highp float; // <-- Uncomment to test
+precision lowp float;
 
 varying vec4 v_position;
 varying vec2 v_texCoord;
