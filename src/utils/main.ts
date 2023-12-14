@@ -1,10 +1,11 @@
 import createProgram from "./createProgram.ts";
 import vertexShaderSource from "../shaders/passthrough.vert";
 import fragmentShaderSource from "../shaders/passthrough.frag";
-import bufferTestMesh, { bufferTestMeshNormals } from "./bufferTestMesh.ts";
 import resizeCanvasToDisplaySize from "./resizeCanvasToDisplaySize.ts";
 import M4 from "./m4.ts";
 import { degToRad } from "./math.ts";
+import bufferTestMesh, { bufferTestMeshNormals } from "./bufferTestMesh.ts";
+import FlappyBird from "./game/FlappyBird.ts";
 
 function main() {
 
@@ -21,20 +22,34 @@ function main() {
     if (!program)
         return;
 
-
     // Get Attribute Locations
     const positionLocation = gl.getAttribLocation(program, "a_position");
     const normalLocation = gl.getAttribLocation(program, "a_normal");
-    const mvpLocation = gl.getUniformLocation(program, "u_worldViewProjection");
+    const worldViewProjectionLocation = gl.getUniformLocation(program, "u_worldViewProjection");
+    const lightWorldPosition = gl.getUniformLocation(program, "u_lightWorldPos");
+    const worldLocation = gl.getUniformLocation(program, "u_world");
+    const viewInverseLocation = gl.getUniformLocation(program, "u_viewInverse");
     const worldInverseTransposeLocation = gl.getUniformLocation(program, "u_worldInverseTranspose");
-    const colorLocation = gl.getUniformLocation(program, "u_color");
-    const reverseLightDirectionLocation = gl.getUniformLocation(program, "u_reverseLightDirection");
+    const lightColorLocation = gl.getUniformLocation(program, "u_lightColor");
+    const baseColorLocation = gl.getUniformLocation(program, "u_colorMult");
+    const diffuseColorLocation = gl.getUniformLocation(program, "u_diffuse");
+    const specularColorLocation = gl.getUniformLocation(program, "u_specular");
+    const shininessLocation = gl.getUniformLocation(program, "u_shininess");
+    const specularStrengthLocation = gl.getUniformLocation(program, "u_specularFactor");
+
     if (positionLocation < 0 ||
         normalLocation < 0 ||
-        !mvpLocation ||
-        !worldInverseTransposeLocation ||
-        !colorLocation ||
-        !reverseLightDirectionLocation)
+        !lightWorldPosition ||
+        !viewInverseLocation ||
+        !lightColorLocation ||
+        !baseColorLocation ||
+        !diffuseColorLocation ||
+        !specularColorLocation ||
+        !shininessLocation ||
+        !specularStrengthLocation ||
+        !worldViewProjectionLocation ||
+        !worldLocation ||
+        !worldInverseTransposeLocation)
         return;
 
     // Buffer Mesh
@@ -51,99 +66,100 @@ function main() {
     if (!normalBuffer)
         return;
 
-    const drawScene = () => {
+    // Create Game
+    const game = new FlappyBird();
 
-        // Set Canvas Size
-        const canvas = gl.canvas as HTMLCanvasElement;
+    // Draw the scene.
+    const drawScene = () => {
         resizeCanvasToDisplaySize(canvas);
+
+        // Tell WebGL how to convert from clip space to pixels
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-        // WebGL Setup
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); // Clear the canvas
-        gl.enable(gl.CULL_FACE); // Cull back faces.
-        gl.enable(gl.DEPTH_TEST); // Enable the depth buffer
+        // Clear the canvas AND the depth buffer.
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        // Tell it to use our program (pair of shaders)
+        gl.enable(gl.CULL_FACE);
+        gl.enable(gl.DEPTH_TEST);
+
+        // Compute the projection matrix
+        const fieldOfViewRadians = degToRad(60);
+        const aspect = canvas.clientWidth / canvas.clientHeight;
+        const projectionMatrix = M4.perspective(fieldOfViewRadians, aspect, 1, 2000);
+
+        // Compute the camera's matrix using look at.
+        const cameraMatrix = M4.lookAt(
+            [0, 0, -400],
+            [0, 0, 0],
+            [0, 1, 0]
+        );
+
+        // Make a view matrix from the camera matrix.
+        const viewMatrix = M4.inverse(cameraMatrix);
+        const viewProjectionMatrix = M4.multiply(projectionMatrix, viewMatrix);
+
         gl.useProgram(program);
 
-        // Enable the position attribute
+        // Set Attribute Locations
         gl.enableVertexAttribArray(positionLocation);
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.vertexAttribPointer(
-            positionLocation,
-            3, // size
-            gl.FLOAT, // type
-            false, // normalize
-            0, // stride
-            0 // offset
-        );
+        gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
 
-        // Enable the color attribute
         gl.enableVertexAttribArray(normalLocation);
         gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-        gl.vertexAttribPointer(
-            normalLocation,
-            3, // size
-            gl.FLOAT, // type
-            false, // normalize
-            0, // stride
-            0 // offset
-        );
+        gl.vertexAttribPointer(normalLocation, 3, gl.FLOAT, false, 0, 0);
 
-        // Get Transformations
-        const translation = [0, 0, -360];
-        const rotation = [degToRad(0), degToRad(0), degToRad(0)];
-        const scale = [1, 1, 1];
-        const fieldOfViewRadians = degToRad(60);
+        // Bind the indices.
+        //gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
 
-        // Projection
-        let projectionMatrix = M4.perspective(
-            fieldOfViewRadians,
-            canvas.clientWidth / canvas.clientHeight, // aspect
-            1, // near
-            2000 // far
-        );
-        projectionMatrix = M4.translate(projectionMatrix, translation[0], translation[1], translation[2]);
-        projectionMatrix = M4.xRotate(projectionMatrix, rotation[0]);
-        projectionMatrix = M4.yRotate(projectionMatrix, rotation[1]);
-        projectionMatrix = M4.zRotate(projectionMatrix, rotation[2]);
-        projectionMatrix = M4.scale(projectionMatrix, scale[0], scale[1], scale[2]);
+        // Set the uniforms that are the same for all objects.
+        gl.uniform3fv(lightWorldPosition, [-50, 30, 100]);
+        gl.uniform4fv(lightColorLocation, [1, 1, 1, 1]);
+        gl.uniformMatrix4fv(viewInverseLocation, false, M4.inverse(viewMatrix));
 
-        // Camera
-        const cameraMatrix = M4.lookAt(
-            [0, 0, 100], // Camera Position
-            [0, 0, 0], // Target
-            [0, 1, 0] // Up
-        );
+        // Update Game
+        game.update();
 
-        // View
-        const vMatrix = M4.inverse(cameraMatrix);
-        const vpMatrix = M4.multiply(projectionMatrix, vMatrix);
-        const worldMatrix = M4.yRotation(0);
-        const mvpMatrix = M4.multiply(vpMatrix, worldMatrix);
-        const worldInverseMatrix = M4.inverse(worldMatrix);
-        const worldInverseTransposeMatrix = M4.transpose(worldInverseMatrix);
+        // Draw objects
+        const objects = game.getRenderables();
+        objects.forEach((object) => {
 
-        // Set the matrices
-        gl.uniformMatrix4fv(mvpLocation, false, mvpMatrix);
-        gl.uniformMatrix4fv(worldInverseTransposeLocation, false, worldInverseTransposeMatrix);
+            // Compute a position for this object based on the time.
+            let worldMatrix = M4.xRotation(object.rotation[0]);
+            worldMatrix = M4.yRotate(worldMatrix, object.rotation[1]);
+            worldMatrix = M4.zRotate(worldMatrix, object.rotation[2]);
+            worldMatrix = M4.translate(worldMatrix, object.position[0], object.position[1], object.position[2]);
+            worldMatrix = M4.scale(worldMatrix, object.scale[0], object.scale[1], object.scale[2]);
 
-        // Set Color
-        gl.uniform4fv(colorLocation, [0.2, 1, 0.2, 1]); // green
+            // Multiply the matrices.
+            const worldViewProjectionMatrix = M4.multiply(viewProjectionMatrix, worldMatrix);
+            const worldInverseTransposeMatrix = M4.transpose(M4.inverse(worldMatrix));
 
-        // Set Light Direction
-        gl.uniform3fv(reverseLightDirectionLocation, M4.normalize([-0.5, -0.5, -0.5]));
+            // Set the uniforms we just computed
+            gl.uniformMatrix4fv(worldViewProjectionLocation, false, worldViewProjectionMatrix);
+            gl.uniformMatrix4fv(worldLocation, false, worldMatrix);
+            gl.uniformMatrix4fv(worldInverseTransposeLocation, false, worldInverseTransposeMatrix);
 
-        // Draw the geometry.
-        gl.drawArrays(
-            gl.TRIANGLES, // Primitive Type
-            0, // Offset
-            16 * 6 // Count
-        );
+            // Set the uniforms that are specific to this object.
+            gl.uniform4fv(baseColorLocation, object.baseColor);
+            gl.uniform4fv(diffuseColorLocation, object.diffuseColor);
+            gl.uniform4fv(specularColorLocation, object.specularColor);
+            gl.uniform1f(shininessLocation, object.shininess);
+            gl.uniform1f(specularStrengthLocation, object.specularStrength);
+
+            // Draw the geometry.
+            //gl.drawElements(gl.TRIANGLES, buffers.numElements, gl.UNSIGNED_SHORT, 0);
+            gl.drawArrays(
+                gl.TRIANGLES, // Primitive Type
+                0, // Offset
+                16 * 6 // Count
+            );
+        });
+
+        requestAnimationFrame(drawScene);
     }
 
-    // Draw Scene
-    drawScene();
+    requestAnimationFrame(drawScene);
 }
 
 main();

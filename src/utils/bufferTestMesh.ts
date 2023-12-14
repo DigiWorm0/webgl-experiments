@@ -402,3 +402,134 @@ export function bufferTestMeshNormals(gl: WebGLRenderingContext) {
         -1, 0, 0
     ]), gl.STATIC_DRAW);
 }
+
+export function bufferTestMeshTextureCoordinates(gl: WebGLRenderingContext) {
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        // left column front
+        0, 0,
+        0, 1,
+        1, 0,
+        0, 1,
+        1, 1,
+        1, 0,
+
+        // top rung front
+        0, 0,
+        0, 1,
+        1, 0,
+        0, 1,
+        1, 1,
+        1, 0,
+
+        // middle rung front
+        0, 0,
+        0, 2,
+        1, 0,
+        0, 2,
+        1, 2,
+        1, 0,
+
+        // left column back
+        0, 0,
+        0, 1,
+        1, 0,
+        0, 1,
+        1, 1,
+        1, 0,
+
+        // top rung back
+        0, 0,
+        0, 1,
+        1, 0,
+        0, 1,
+        1, 1,
+        1, 0,
+
+        // middle rung back
+        0, 0,
+        0, 2,
+        1, 0,
+        0, 2,
+        1, 2,
+        1, 0,
+
+        // top
+        0, 0,
+        0, 1,
+        1, 1,
+        0, 0,
+        1, 1,
+        1, 0,
+
+        // top rung right
+        0, 0,
+        0, 1,
+        2, 1,
+        0, 0,
+        2, 1,
+        2, 0,
+
+        // under top rung
+        0, 0,
+        0, 2,
+        2, 2,
+        0, 0,
+        2, 2,
+        2, 0,
+
+        // between top rung and middle
+        0, 0,
+        0, 2,
+        1, 2,
+        0, 0,
+        1, 2,
+        1,
+
+        // top of middle rung
+        0, 0,
+        0, 2,
+        2, 2,
+        0, 0,
+        2, 2,
+        2, 0,
+
+        // right of middle rung
+        0, 0,
+        0, 2,
+        1, 2,
+        0, 0,
+        1, 2,
+        1, 0,
+
+        // bottom of middle rung.
+        0, 0,
+        0, 2,
+        2, 2,
+        0, 0,
+        2, 2,
+        2, 0,
+
+        // right of bottom
+        0, 0,
+        0, 2,
+        1, 2,
+        0, 0,
+        1, 2,
+        1, 0,
+
+        // bottom
+        0, 0,
+        0, 1,
+        1, 1,
+        0, 0,
+        1, 1,
+
+        // left side
+        0, 0,
+        0, 2,
+        1, 2,
+        0, 0,
+        1, 2,
+        1, 0
+    ]), gl.STATIC_DRAW);
+}
